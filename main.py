@@ -31,6 +31,7 @@ async def on_message(msg):
 @d_bot.command(name='ping', help='- pong')
 async def on_command_ping(ctx):
     if ctx.channel.id == config.get('chat_id_bot_commands'):
+        print(f'({ctx.author.id}, {ctx.author.display_name}): issued ping command')
         await ctx.send('pong')
     else:
         await ctx.message.delete()
@@ -53,6 +54,7 @@ async def on_command_vote(ctx, cast_for : discord.Member = None):
                     await ctx.send('Vote updated!')
                 else:
                     await ctx.send('Vote cast!')
+                print(f'({ctx.author.id}, {ctx.author.display_name}): vote for ({cast_for_ir}, {cast_for.display_name})')
                 votes[voter_id] = {
                     "cast_for": cast_for_id
                 }
@@ -85,6 +87,7 @@ async def on_error_vote(ctx, error):
 @d_bot.command(name='tally', help='- get a current tally of the votes')
 async def on_command_tally(ctx):
     if ctx.channel.id == config.get('chat_id_bot_commands'):
+        print(f'({ctx.author.id}, {ctx.author.display_name}): issued tally command')
         await ctx.send(tally_to_str(tally_election()))
     else:
         await ctx.message.delete()
@@ -100,6 +103,7 @@ async def on_error_tally(ctx, error):
 @d_bot.command(name='election', help='- view election information')
 async def on_command_election(ctx):
     if ctx.channel.id == config.get('chat_id_bot_commands'):
+        print(f'({ctx.author.id}, {ctx.author.display_name}): issued election command')
         await ctx.send('Elections end every Saturday at 8PM EST. The victor is promoted to role EL PRESIDENTE. Term is 1 week.\nIf no votes are cast, EL PRESIDENTE shall remain in office for another term.\nIf there is a tie for EL PRESIDENTE, then either\n\ta) if the current EL PRESIDENTE is one of the tied members, they are re-elected; or\n\tb) a random tied member is elected to EL PRESIDENTE')
     else:
         await ctx.message.delete()
@@ -133,6 +137,7 @@ def tally_to_str(tally):
 @commands.has_permissions(administrator=True)
 async def on_command_clear_votes(ctx):
     if ctx.channel.id == config.get('chat_id_bot_commands'):
+        print(f'({ctx.author.id}, {ctx.author.display_name}): issued clear_votes command')
         clear_votes()
         await ctx.send('Votes cleared!')
     else:
@@ -201,14 +206,15 @@ async def election_cycle():
 async def election_coroutine():
     await d_bot.wait_until_ready()
     while not d_bot.is_closed():
+        print('Checking current datetime for correct election time')
         now = datetime.now()
-        time = now.time()
         if now.weekday() == 5: #if now is Saturday
-            if time.hour == 20: #if the hour is 8 pm
-                if time.minute == 0: #if its 8:00pm
+            if now.hour == 20: #if the hour is 8 pm
+                if now.minute == 0: #if its 8:00pm
+                    print('Correct election time!')
                     await election_cycle()
 
-        sleep_time = 60 + (10 - time.second) ## this makes the sleep function stick around the 10-second mark for the next call
+        sleep_time = 60 + (10 - now.second) ## this makes the sleep function stick around the 10-second mark for the next call
         await asyncio.sleep(sleep_time)
 
 #load config
