@@ -1,6 +1,6 @@
 # Project specific
-config.json
-election_data.json
+*/config.json
+*/election_data.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

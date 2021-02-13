@@ -123,7 +123,7 @@ def tally_election():
 
     return sorted(tally.items(), key = lambda kv: kv[1], reverse = True)
 
-@d_bot.command(name='clear_votes', help='- clears the votes')# TODO: permissions for this function should be admin only
+@d_bot.command(name='clear_votes', help='- clears the votes')
 @commands.has_permissions(administrator=True)
 async def on_command_clear_votes(ctx):
     if ctx.channel.id == config.get('chat_id_bot_commands'):
@@ -145,6 +145,7 @@ async def election_cycle():
     results = tally_election()
     general_chat = d_bot.guilds[0].get_channel(config.get('chat_id_general'))
     if len(results) > 0:
+        role_el_presidente = d_bot.guilds[0].get_role(config.get('role_id_el_presidente'))
         top_candidate = results[0]
 
         tied = []
@@ -161,10 +162,9 @@ async def election_cycle():
         print(f'Top: {top_candidate}')
         winner = d_bot.guilds[0].get_member(top_candidate[0])
 
-        #remove current EL PRESIDENTE
-
-        role_el_presidente = d_bot.guilds[0].get_role(config.get('role_id_el_presidente'))
+        #remove current EL PRESIDENTE and check if the president is one of the tied memebers
         for m in role_el_presidente.members:
+            # if the president is a tied member, they win regardless of random selection
             await m.remove_roles(role_el_presidente)
             print(f'{m.display_name} is removed from EL PRESIDENTE')
 
