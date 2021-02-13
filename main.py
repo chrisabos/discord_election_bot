@@ -85,13 +85,7 @@ async def on_error_vote(ctx, error):
 @d_bot.command(name='tally', help='- get a current tally of the votes')
 async def on_command_tally(ctx):
     if ctx.channel.id == config.get('chat_id_bot_commands'):
-        standing_str = "Standings:\n"
-        template_str = "{:>5} - {:<}\n"
-        for candidate in tally_election():
-            print(candidate)
-            standing_str += template_str.format(candidate[1], ctx.guild.get_member(int(candidate[0])).display_name)
-
-        await ctx.send(standing_str)
+        await ctx.send(tally_to_str(tally_election()))
     else:
         await ctx.message.delete()
         await ctx.author.send('Please keep all commands to the "bot-commands" channel')
@@ -106,7 +100,7 @@ async def on_error_tally(ctx, error):
 @d_bot.command(name='election', help='- view election information')
 async def on_command_election(ctx):
     if ctx.channel.id == config.get('chat_id_bot_commands'):
-        await ctx.send('Elections end every Saturday at 8PM EST. The victor is promoted to role EL PRESIDENTE. Term is 1 week.\nIf no votes are cast, EL PRESIDENTE shall remain in office for another term.\nIf there is a tie for EL PRESIDENTE, a random tied candidate shall be declared EL PRESIDENTE.')
+        await ctx.send('Elections end every Saturday at 8PM EST. The victor is promoted to role EL PRESIDENTE. Term is 1 week.\nIf no votes are cast, EL PRESIDENTE shall remain in office for another term.\nIf there is a tie for EL PRESIDENTE, then either\n\ta) if the current EL PRESIDENTE is one of the tied members, they are re-elected; or\n\tb) a random tied member is elected to EL PRESIDENTE')
     else:
         await ctx.message.delete()
         await ctx.author.send('Please keep all commands to the "bot-commands" channel')
@@ -122,6 +116,18 @@ def tally_election():
             tally[cast_for] = 1
 
     return sorted(tally.items(), key = lambda kv: kv[1], reverse = True)
+
+def tally_to_str(tally):
+    if tally:
+        tally_str = "Standings:\n"
+        template_str = "{:>5} - {:<}\n"
+        for candidate in tally_election():
+            print(candidate)
+            tally_str += template_str.format(candidate[1], d_bot.guilds[0].get_member(int(candidate[0])).display_name)
+
+        return tally_str
+    else:
+        return ""
 
 @d_bot.command(name='clear_votes', help='- clears the votes')
 @commands.has_permissions(administrator=True)
@@ -145,8 +151,10 @@ async def election_cycle():
     results = tally_election()
     general_chat = d_bot.guilds[0].get_channel(config.get('chat_id_general'))
     if len(results) > 0:
+        await general_chat.send(tally_to_str(results))
         role_el_presidente = d_bot.guilds[0].get_role(config.get('role_id_el_presidente'))
         top_candidate = results[0]
+        winner = None
 
         tied = []
 
@@ -155,27 +163,37 @@ async def election_cycle():
             if candidate[1] == top_candidate[1]: ## if this candidate got the same number of votes as the winner
                 tied.append(candidate)
 
-        if len(tied) > 1:
-            await general_chat.send('A tie has occurred! Picking a random EL PRESIDENTE')
-            top_candidate = random.choice(tied)# chaos
-
-        print(f'Top: {top_candidate}')
-        winner = d_bot.guilds[0].get_member(top_candidate[0])
-
-        #remove current EL PRESIDENTE and check if the president is one of the tied memebers
+        #if the president is in the tied group, they win
+        tied_ids = [i[0] for i in tied]
         for m in role_el_presidente.members:
-            # if the president is a tied member, they win regardless of random selection
-            await m.remove_roles(role_el_presidente)
-            print(f'{m.display_name} is removed from EL PRESIDENTE')
+            if m.id in tied_ids:
+                winner = m
+                break
 
-        await winner.add_roles(role_el_presidente)
-        print(f'{winner.display_name} is added to EL PRESIDENTE')
+        if winner: # the current president was in the tied list.. we have our winner
+            print(f'The current EL PRESIDENTE has won re-election')
+            await general_chat.send(winner.mention + ' has won re-election!!!')
+        else: # keep searching
+            if len(tied) > 1:
+                await general_chat.send('A tie has occurred! Picking a random EL PRESIDENTE')
+                top_candidate = random.choice(tied)# chaos
+
+            print(f'Top: {top_candidate}')
+            winner = d_bot.guilds[0].get_member(top_candidate[0])
+
+            #remove current EL PRESIDENTE and check if the president is one of the tied memebers
+            for m in role_el_presidente.members:
+                # if the president is a tied member, they win regardless of random selection
+                await m.remove_roles(role_el_presidente)
+                print(f'{m.display_name} is removed from EL PRESIDENTE')
+
+            await winner.add_roles(role_el_presidente)
+            print(f'{winner.display_name} is added to EL PRESIDENTE')
+
+            await general_chat.send(winner.mention + ' has been elected EL PRESIDENTE!!!')
 
         data.get()['history'].append(winner.id)
         data.save()
-
-
-        await general_chat.send(winner.mention + ' has been elected EL PRESIDENTE!!!')
     else:
         await general_chat.send('No votes. EL PRESIDENTE remains.')
     clear_votes()
