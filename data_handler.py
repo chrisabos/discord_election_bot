@@ -3,13 +3,13 @@ import json
 data = None
 
 def save():
-    with open("election_data.json", "w") as file:
+    with open("/home/pi/discord_election_bot/election_data.json", "w") as file:
         json.dump(data, file, indent = 4)
         file.close()
     return True
 
 def load():
-    with open("election_data.json", "r") as file:
+    with open("/home/pi/discord_election_bot/election_data.json", "r") as file:
         global data
         data = json.load(file)
         file.close()
